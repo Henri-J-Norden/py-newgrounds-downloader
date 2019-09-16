@@ -1,20 +1,19 @@
-options = { #replace with settings file later
-    "concurrentDownloads":4,
-    "downloadProgress":False
-    }
-
-
 from multiprocessing import Process,Event
 from urllib.request import urlretrieve,Request,urlopen
 from time import sleep
-import os,re,sys
+import os,re,sys,argparse,urllib
+
+options = { #replace with settings file later
+    "concurrentDownloads":1,
+    "downloadProgress":False
+}
 
 downloadCount = 0
 downloaders = []
 downloaderArgs = []
 downloadersDone = []
-"""
 
+"""
 DLProgressTracker = []
 def DLProgress(blocks,blockSize,totalSize,percent=101): #display download progress every 25%
     global DLProgressTracker
@@ -31,6 +30,7 @@ def DLProgress(blocks,blockSize,totalSize,percent=101): #display download progre
         stdout.flush()
         #DLProgressTracker = [] #not necessary, since the function is only used once
 """
+
 def downloader(url,target,e=None):
     req = Request(url,headers={"User-agent":"Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"})
     if not os.path.exists(os.path.dirname(target)):
@@ -42,7 +42,9 @@ def downloader(url,target,e=None):
         try:
             file.write(urlopen(req).read())
             success = True
-        except urllib.error.HTTPError:
+        except urllib.error.HTTPError as e:
+            print("HTTP Error:")
+            print(e)
             sleep(11)
             retries += 1
         
@@ -51,6 +53,7 @@ def downloader(url,target,e=None):
         e.set()
 
 
+#DL(["http://www.newgrounds.com/audio/download/626468"],["file.mp3"])
 def DL(urlList, targetList):
     global downloadCount
     args = [(urlList[x], targetList[x]) for x in range(len(urlList))]
@@ -64,7 +67,7 @@ def DL(urlList, targetList):
                 downloadCount -= 1
                 shift -= 1
         if downloadCount >= options["concurrentDownloads"]:
-            sleep(0.05)
+            sleep(0.1)
         else:
             while downloadCount < options["concurrentDownloads"] and args != []:
                 arg = [x for x in args.pop()]
@@ -99,8 +102,19 @@ def getFiles(username,folder=".\\",dlType="audio"):
         
     DL(urls,files)
 
-if __name__ == '__main__':    
-    #DL(["http://www.newgrounds.com/audio/download/626468"],["file.mp3"])
-    getFiles("indigorain")
+
+def getArgParser():
+    p = argparse.ArgumentParser(description="Newgrounds music downloader")
+    p.add_argument("-n", type=int, default=4, dest="threads", help="Sets the number of files to download concurrently. Should speed up downloads on fast connections.")
+    p.add_argument("username", nargs="+", help="List of usernames whose songs you wish to download.")
+    return p
+
+
+if __name__ == '__main__':
+    args = getArgParser().parse_args()
+    options["concurrentDownloads"] = args.threads
+    for user in args.username:
+        print("\n\nParsing {}...".format(user))
+        getFiles(user)
     
     
