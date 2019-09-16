@@ -5,7 +5,8 @@ import os,re,sys,argparse,urllib
 
 options = { #replace with settings file later
     "concurrentDownloads":1,
-    "downloadProgress":False
+    "downloadProgress":False,
+    "retryDelay":5
 }
 
 downloadCount = 0
@@ -45,7 +46,7 @@ def downloader(url,target,e=None):
         except urllib.error.HTTPError as e:
             print("HTTP Error:")
             print(e)
-            sleep(11)
+            sleep(options["retryDelay"])
             retries += 1
         
     file.close()
@@ -106,6 +107,7 @@ def getFiles(username,folder=".\\",dlType="audio"):
 def getArgParser():
     p = argparse.ArgumentParser(description="Newgrounds music downloader")
     p.add_argument("-n", type=int, default=4, dest="threads", help="Sets the number of files to download concurrently. Should speed up downloads on fast connections.")
+    p.add_argument("-t", type=float, default=5, dest="delay", help="Delay (in seconds) to wait before retrying a failed download.")
     p.add_argument("username", nargs="+", help="List of usernames whose songs you wish to download.")
     return p
 
@@ -113,6 +115,7 @@ def getArgParser():
 if __name__ == '__main__':
     args = getArgParser().parse_args()
     options["concurrentDownloads"] = args.threads
+    options["retryDelay"] = args.delay
     for user in args.username:
         print("\n\nParsing {}...".format(user))
         getFiles(user)
