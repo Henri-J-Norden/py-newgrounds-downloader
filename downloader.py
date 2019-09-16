@@ -1,5 +1,5 @@
 options = { #replace with settings file later
-    "concurrentDownloads":1,
+    "concurrentDownloads":4,
     "downloadProgress":False
     }
 
@@ -78,21 +78,26 @@ def DL(urlList, targetList):
     
 
 def getFiles(username,folder=".\\",dlType="audio"):
-    req = Request("http://"+username+".newgrounds.com/"+dlType+"/",headers={"User-agent":"Mozilla/5.0"})
-    page = str(urlopen(req).read(),encoding="UTF-8")
-    matches = re.findall('<a href="(http://www.newgrounds.com/'+dlType+'/listen[a-zA-Z0-9\-_/]*)">(.*)</a>[ </td>\n]*([a-zA-Z0-9 _-]*)</td>',page)
-    urls = [matches[i][0].replace("listen","download") for i in range(len(matches))]
-    files = [folder+username+"\\"+matches[i][2].replace(" Song","")+"\\"+matches[i][1]+".mp3" for i in range(len(matches))]
+    matches = []
+    matches_genres = []
+    page_i = 1
+    more = True
+    while more:
+        url = "https://"+username+".newgrounds.com/"+dlType+"/page/"+str(page_i)
+        print("Fetching '{}'...".format(url))
+        req = Request(url, headers={"User-agent":"Mozilla/5.0", "x-requested-with": "XMLHttpRequest"})
+        page = str(urlopen(req).read(),encoding="UTF-8")
+        matches += re.findall('<a href=.*?newgrounds\.com.*?'+dlType+'.*?listen.*?([0-9]+).*?title\=.*?\"(.+?)\\\\\">', page)
+        matches_genres += re.findall('detail-genre.*?(?:\s)+([ \w]+).*?div>', page)
+        more = re.search("\"more\"\:null", page) is None
+        page_i += 1
+    print("Found {} songs.".format(str(len(matches))))
+    urls = ["https://www.newgrounds.com/audio/download/{}/".format(matches[i][0]) for i in range(len(matches))]
+    files = [folder+username+"\\"+matches_genres[i].replace("Song","").strip()+"\\"+matches[i][1]+".mp3" for i in range(len(matches))]
     if not os.path.exists(folder+username):
         os.mkdir(folder+username)
-    #print(len(files),len(urls))
-    #print("\n".join(files))
-    #input(urls)
         
     DL(urls,files)
-    #for i in range(len(urls)):
-    #    print(urls[i])
-    #    downloader(urls[i],files[i])
 
 if __name__ == '__main__':    
     #DL(["http://www.newgrounds.com/audio/download/626468"],["file.mp3"])
